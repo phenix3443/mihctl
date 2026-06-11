@@ -1,0 +1,236 @@
+mixed-port: 7890
+allow-lan: true
+bind-address: "*"
+find-process-mode: strict
+mode: rule
+geodata-mode: true
+geox-url:
+  geoip: "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geoip.dat"
+  geosite: "https://cdn.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/geosite.dat"
+  mmdb: "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
+geo-auto-update: true
+geo-update-interval: 24
+log-level: info
+ipv6: true
+external-controller: 0.0.0.0:9090
+secret: "{{ .Template.Secret }}"
+external-controller-cors:
+  allow-origins:
+    - "*"
+  allow-private-network: true
+external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
+{{- if .ExternalUI }}
+external-ui: {{ .ExternalUI }}
+{{- end }}
+unified-delay: true
+tcp-concurrent: true
+keep-alive-interval: 30
+client-fingerprint: chrome
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+sniffer:
+  enable: true
+  force-dns-mapping: true
+  parse-pure-ip: true
+  override-destination: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+      override-destination: true
+    QUIC:
+      ports: [443, 8443]
+      override-destination: true
+  force-domain:
+{{ toYAML .Template.Sniffer.ForceDomain | indent 4 }}
+  skip-domain:
+{{ toYAML .Template.Sniffer.SkipDomain | indent 4 }}
+dns:
+  enable: true
+  prefer-h3: true
+  listen: 127.0.0.1:53
+  ipv6: true
+  use-hosts: true
+  use-system-hosts: true
+  respect-rules: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter-mode: rule
+  fake-ip-filter:
+{{ toYAML .Template.DNS.FakeIPFilter | indent 4 }}
+  default-nameserver:
+    - 223.5.5.5
+    - 8.8.8.8
+
+  nameserver:
+    - 223.5.5.5
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+
+  proxy-server-nameserver:
+    - 223.5.5.5
+    - https://doh.pub/dns-query
+
+  nameserver-policy:
+    "geosite:cn,private":
+      - 223.5.5.5
+      - https://doh.pub/dns-query
+      - https://dns.alidns.com/dns-query
+    "geosite:gfw":
+      - 8.8.8.8
+      - tls://8.8.8.8
+      - tls://1.0.0.1
+    "geosite:geolocation-!cn":
+      - 8.8.8.8
+      - https://doh.pub/dns-query
+      - https://dns.alidns.com/dns-query
+
+  fallback:
+    - 8.8.8.8
+    - tls://8.8.8.8
+    - tls://1.0.0.1
+
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+    domain:
+      - "+.google.com"
+      - "+.facebook.com"
+      - "+.youtube.com"
+      - "+.githubusercontent.com"
+      - "+.googlevideo.com"
+
+proxies:
+{{ toYAML .Proxies | indent 2 }}
+
+proxy-groups:
+{{ toYAML .ProxyGroups | indent 2 }}
+
+proxy-providers:
+{{ toYAML .ProxyProviders | indent 2 }}
+
+rule-providers:
+{{- if .RuleProviders.Keys }}
+{{ toYAML .RuleProviders | indent 2 }}
+{{- end }}
+  reject:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/reject.txt"
+    path: ./ruleset/reject.yaml
+    interval: 86400
+  private:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/private.txt"
+    path: ./ruleset/private.yaml
+    interval: 86400
+{{- if index .ProxyGroupNames "streaming" }}
+  streaming:
+    type: http
+    behavior: classical
+    format: yaml
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/GlobalMedia/GlobalMedia_Classical.yaml"
+    path: ./ruleset/streaming.yaml
+    interval: 86400
+{{- end }}
+  telegram:
+    type: http
+    behavior: classical
+    format: yaml
+    url: "https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash/Telegram/Telegram.yaml"
+    path: ./ruleset/telegram.yaml
+    interval: 86400
+  apple:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/apple.txt"
+    path: ./ruleset/apple.yaml
+    interval: 86400
+  icloud:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/icloud.txt"
+    path: ./ruleset/icloud.yaml
+    interval: 86400
+  direct:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/direct.txt"
+    path: ./ruleset/direct.yaml
+    interval: 86400
+  proxy:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/proxy.txt"
+    path: ./ruleset/proxy.yaml
+    interval: 86400
+  gfw:
+    type: http
+    behavior: domain
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/gfw.txt"
+    path: ./ruleset/gfw.yaml
+    interval: 86400
+  telegramcidr:
+    type: http
+    behavior: ipcidr
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/telegramcidr.txt"
+    path: ./ruleset/telegramcidr.yaml
+    interval: 86400
+  cncidr:
+    type: http
+    behavior: ipcidr
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/cncidr.txt"
+    path: ./ruleset/cncidr.yaml
+    interval: 86400
+  lancidr:
+    type: http
+    behavior: ipcidr
+    format: text
+    url: "https://cdn.jsdelivr.net/gh/Loyalsoldier/clash-rules@release/lancidr.txt"
+    path: ./ruleset/lancidr.yaml
+    interval: 86400
+
+rules:
+{{- if .Rules }}
+{{ toYAML .Rules | indent 2 }}
+{{- end }}
+  - RULE-SET,reject,REJECT
+  - RULE-SET,private,DIRECT
+{{- if index .ProxyGroupNames "streaming" }}
+  - RULE-SET,streaming,streaming
+{{- end }}
+  - RULE-SET,telegram,auto
+  - RULE-SET,lancidr,DIRECT,no-resolve
+  - RULE-SET,apple,DIRECT
+  - RULE-SET,icloud,DIRECT
+  - RULE-SET,proxy,auto
+  - RULE-SET,gfw,auto
+  - RULE-SET,direct,DIRECT
+  - RULE-SET,telegramcidr,auto,no-resolve
+  - RULE-SET,cncidr,DIRECT,no-resolve
+  - GEOSITE,CN,DIRECT
+  - GEOIP,LAN,DIRECT,no-resolve
+  - GEOIP,CN,DIRECT,no-resolve
+  - MATCH,auto
+
+{{- if .Tun }}
+tun:
+{{ toYAML .Tun | indent 2 }}
+{{- end }}

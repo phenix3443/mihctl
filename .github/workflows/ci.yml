@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify no private config is tracked
+        run: |
+          test ! -f config/values.yaml
+          test ! -d providers || [ -z "$(find providers -type f ! -name .gitkeep -print -quit)" ]
+      - name: Run tests
+        run: go test ./...
+      - name: Build binary
+        run: go build -o ./bin/mihctl ./cmd/mihctl
