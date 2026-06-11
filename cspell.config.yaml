@@ -1,0 +1,62 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words:
+  - argotunnel
+  - belkin
+  - bestsrv
+  - bilivideo
+  - bitget
+  - bwbwbw
+  - bywave
+  - cftunnel
+  - cloudflareclient
+  - cncidr
+  - csjones
+  - devbox
+  - dorny
+  - evilmartians
+  - feilian
+  - ff14
+  - ffxiv
+  - finalfantasyxiv
+  - fname
+  - geodata
+  - geoip
+  - geolocation
+  - geosite
+  - geox
+  - goodsrv
+  - googlevideo
+  - ipcidr
+  - jisu
+  - jsjc
+  - kuwo
+  - lancidr
+  - lefthook
+  - linksys
+  - mcdn
+  - mesu
+  - metacubexd
+  - migu
+  - mihomo
+  - Mijia
+  - mmdb
+  - msftconnecttest
+  - msftncsi
+  - nflxvideo
+  - passwordless
+  - QUIC
+  - sdo
+  - siamparagon
+  - square-enix
+  - swscan
+  - tailscaled
+  - telegramcidr
+  - toplevel
+  - tradingview
+  - xboxlive
+  - xiami
+ignoreWords: []
+import: []

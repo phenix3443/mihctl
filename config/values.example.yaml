@@ -1,0 +1,42 @@
+default-profile: local
+
+profiles:
+  local:
+    os: macos
+  k3s:
+    os: linux
+
+template:
+  secret: "replace-me"
+  external-ui:
+    local: ui
+    k3s: /etc/clash/ui
+  sniffer:
+    force-domain: []
+    skip-domain: []
+  dns:
+    fake-ip-filter: []
+
+probe:
+  services: {}
+
+official-support: {}
+
+manual-proxies: []
+
+tun:
+  linux: {}
+  macos: {}
+
+proxy-providers:
+  example:
+    type: http
+    url: https://example.com/subscription.yaml
+    interval: 3600
+    path: ./providers/example.yaml
+
+rule-providers: {}
+
+service-groups: {}
+
+rules: []

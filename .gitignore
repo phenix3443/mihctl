@@ -1,0 +1,13 @@
+bin/
+providers/*
+!providers/.gitkeep
+config/values.yaml
+config/*/mihomo.yaml
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+debug.log
+.tag-session.json
+node_modules/
+.DS_Store

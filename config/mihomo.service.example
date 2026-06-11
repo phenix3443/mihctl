@@ -1,0 +1,13 @@
+[Unit]
+Description=Mihomo (Clash) proxy
+After=network.target
+
+[Service]
+Type=simple
+User=@SERVICE_USER@
+ExecStart=@INSTALL_DIR@/mihomo -d @CONFIG_DIR@
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
