@@ -1,4 +1,21 @@
-# Mihomo Companion
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Mihomo Companion logo" width="128" height="128" />
+</p>
+
+<h1 align="center">Mihomo Companion</h1>
+
+<p align="center">
+  Companion CLI for managing Mihomo providers and config generation.
+</p>
+
+<p align="center">
+  <a href="https://github.com/phenix3443/mihomo-companion/actions/workflows/ci.yml">
+    <img src="https://github.com/phenix3443/mihomo-companion/actions/workflows/ci.yml/badge.svg" alt="CI status" />
+  </a>
+  <a href="https://github.com/phenix3443/mihomo-companion/actions/workflows/release.yml">
+    <img src="https://github.com/phenix3443/mihomo-companion/actions/workflows/release.yml/badge.svg" alt="Release status" />
+  </a>
+</p>
 
 `mihctl` is a companion CLI for [Mihomo](https://github.com/MetaCubeX/mihomo). It helps you install Mihomo, manage provider subscriptions, generate config from templates, and sync generated config into a live runtime on macOS and Linux.
 
