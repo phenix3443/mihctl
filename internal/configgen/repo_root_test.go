@@ -12,7 +12,7 @@ func TestResolveRepoRootUsesOverride(t *testing.T) {
 	if err := os.MkdirAll(override, 0o755); err != nil {
 		t.Fatalf("mkdir override: %v", err)
 	}
-	t.Setenv("MIHOMO_REPO_ROOT", override)
+	t.Setenv("MIHCTL_INSTANCE_ROOT", override)
 
 	got, err := ResolveRepoRoot()
 	if err != nil {
@@ -29,7 +29,7 @@ func TestResolveRepoRootUsesOverride(t *testing.T) {
 }
 
 func TestResolveRepoRootFallsBackToDetect(t *testing.T) {
-	t.Setenv("MIHOMO_REPO_ROOT", "")
+	t.Setenv("MIHCTL_INSTANCE_ROOT", "")
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {

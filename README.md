@@ -28,7 +28,7 @@ $EDITOR config/values.yaml
 
 Tagged releases publish `tar.gz` archives for Linux and macOS on both `amd64` and `arm64`, plus a `checksums.txt` file. Each archive contains `mihctl` and the `config/` template directory.
 
-When `mihctl` is used from an instance repository instead of the `mihomo-companion` source tree, set `MIHOMO_REPO_ROOT` to that instance repository root before running commands.
+When `mihctl` is used from an instance repository instead of the `mihomo-companion` source tree, set `MIHCTL_INSTANCE_ROOT` to that instance repository root before running commands.
 
 ## Key commands
 
