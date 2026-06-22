@@ -244,6 +244,9 @@ func parseStandaloneRuntimeLine(line string) (string, string, bool) {
 	if binaryPath == "" || configDir == "" {
 		return "", "", false
 	}
+	if filepath.Base(binaryPath) != "mihomo" {
+		return "", "", false
+	}
 	return binaryPath, configDir, true
 }
 
@@ -257,6 +260,9 @@ func parseVergeRuntimeLine(line string) (string, string, bool) {
 	if binaryPath == "" || configFile == "" {
 		return "", "", false
 	}
+	if filepath.Base(binaryPath) != "verge-mihomo" {
+		return "", "", false
+	}
 	return binaryPath, configFile, true
 }
 
@@ -268,6 +274,9 @@ func parseLinuxRuntimeLine(line string) (string, string, bool) {
 	binaryPath := strings.TrimSpace(match[1])
 	configFile := strings.TrimSpace(match[2])
 	if binaryPath == "" || configFile == "" {
+		return "", "", false
+	}
+	if filepath.Base(binaryPath) != "mihomo" {
 		return "", "", false
 	}
 	return binaryPath, configFile, true
