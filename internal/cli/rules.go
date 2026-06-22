@@ -2,6 +2,14 @@ package cli
 
 import "github.com/spf13/cobra"
 
+var runRulesUpdate = func(env rulesUpdateEnv) error {
+	return env.UpdateRules()
+}
+
+type rulesUpdateEnv interface {
+	UpdateRules() error
+}
+
 func newRulesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "rules",
@@ -16,7 +24,7 @@ func newRulesCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return env.UpdateRules()
+			return runRulesUpdate(env)
 		},
 	})
 
