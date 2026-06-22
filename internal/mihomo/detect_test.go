@@ -16,6 +16,14 @@ func TestParseStandaloneRuntimeLine(t *testing.T) {
 	}
 }
 
+func TestParseStandaloneRuntimeLineRejectsNonMihomoExecutable(t *testing.T) {
+	line := `/Users/demo/.codex/computer-use/SkyComputerUseClient turn-ended {"last-assistant-message":"run mihomo -d feat/idea-project-agent"} -d polluted/config`
+	_, _, ok := parseStandaloneRuntimeLine(line)
+	if ok {
+		t.Fatal("expected non-mihomo executable to be rejected")
+	}
+}
+
 func TestParseVergeRuntimeLine(t *testing.T) {
 	line := "/Applications/Clash Verge.app/Contents/MacOS/verge-mihomo -d /Users/demo/Library/Application Support/io.github.clash-verge-rev.clash-verge-rev -f /Users/demo/Library/Application Support/io.github.clash-verge-rev.clash-verge-rev/profiles/demo.yaml"
 	binaryPath, configFile, ok := parseVergeRuntimeLine(line)
@@ -30,6 +38,14 @@ func TestParseVergeRuntimeLine(t *testing.T) {
 	}
 }
 
+func TestParseVergeRuntimeLineRejectsNonVergeExecutable(t *testing.T) {
+	line := `/Users/demo/.codex/computer-use/SkyComputerUseClient turn-ended {"last-assistant-message":"verge-mihomo"} -d /tmp -f feat/idea-project-agent/config.yaml`
+	_, _, ok := parseVergeRuntimeLine(line)
+	if ok {
+		t.Fatal("expected non-verge executable to be rejected")
+	}
+}
+
 func TestParseLinuxRuntimeLine(t *testing.T) {
 	line := "/usr/local/bin/mihomo -f /etc/clash/config.yaml"
 	binaryPath, configFile, ok := parseLinuxRuntimeLine(line)
@@ -41,5 +57,13 @@ func TestParseLinuxRuntimeLine(t *testing.T) {
 	}
 	if configFile != "/etc/clash/config.yaml" {
 		t.Fatalf("configFile = %q", configFile)
+	}
+}
+
+func TestParseLinuxRuntimeLineRejectsNonMihomoExecutable(t *testing.T) {
+	line := `/Users/demo/.codex/computer-use/SkyComputerUseClient turn-ended {"last-assistant-message":"mihomo"} -f feat/idea-project-agent/config.yaml`
+	_, _, ok := parseLinuxRuntimeLine(line)
+	if ok {
+		t.Fatal("expected non-mihomo executable to be rejected")
 	}
 }
