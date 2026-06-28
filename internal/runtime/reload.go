@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -165,24 +166,36 @@ func RuleProviders(info APIReloadInfo) ([]string, error) {
 }
 
 func UpdateRuleProvider(info APIReloadInfo, name string) error {
-	req, err := http.NewRequest(http.MethodPut, info.BaseURL+"/providers/rules/"+name, bytes.NewBufferString("{}"))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if info.Secret != "" {
-		req.Header.Set("Authorization", "Bearer "+info.Secret)
+	const maxAttempts = 5
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		req, err := http.NewRequest(http.MethodPut, info.BaseURL+"/providers/rules/"+name, bytes.NewBufferString("{}"))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if info.Secret != "" {
+			req.Header.Set("Authorization", "Bearer "+info.Secret)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+
+		status := resp.StatusCode
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+
+		if status == http.StatusNoContent || status == http.StatusOK {
+			return nil
+		}
+		if status == http.StatusServiceUnavailable && attempt < maxAttempts {
+			time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
+			continue
+		}
+		return fmt.Errorf("update rule provider %s failed with status %d", name, status)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("update rule provider %s failed with status %d", name, resp.StatusCode)
-	}
-	return nil
+	return fmt.Errorf("update rule provider %s failed after retries", name)
 }
