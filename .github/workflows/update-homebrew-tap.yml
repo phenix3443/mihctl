@@ -21,7 +21,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          curl -fsSL -o checksums.txt "https://github.com/phenix3443/mihomo-companion/releases/download/${VERSION}/checksums.txt"
+          curl -fsSL -o checksums.txt "https://github.com/phenix3443/mihctl/releases/download/${VERSION}/checksums.txt"
 
       - name: Render formula
         env:
