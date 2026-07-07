@@ -231,6 +231,12 @@ rules:
 {{- if .Rules }}
 {{ toYAML .Rules | indent 2 }}
 {{- end }}
+  - DOMAIN,developer.apple.com,auto
+  - DOMAIN,download.developer.apple.com,auto
+  - DOMAIN,idmsa.apple.com,auto
+  - DOMAIN,idmsa.apple.com.cn,auto
+  - DOMAIN-SUFFIX,appleid.cdn-apple.com,auto
+  - DOMAIN-SUFFIX,idms-apple.com.akadns.net,auto
   - RULE-SET,reject,REJECT
   - RULE-SET,private,DIRECT
 {{- if index .ProxyGroupNames "streaming" }}
