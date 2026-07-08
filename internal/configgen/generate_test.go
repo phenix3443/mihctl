@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,10 +15,6 @@ func TestLoadGenerationConfigPreservesOrder(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "values.yaml")
 	if err := os.WriteFile(path, []byte(`
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   zzz:
     type: http
@@ -33,11 +28,9 @@ proxy-providers:
     path: ./providers/aaa.yaml
 service-groups:
   second:
-    probe: latency
     type: url-test
     interval: 60
   first:
-    probe: latency
     type: url-test
     interval: 60
 `), 0o644); err != nil {
@@ -59,10 +52,6 @@ func TestLoadGenerationConfigLoadsExternalUI(t *testing.T) {
 template:
   external-ui:
     linux: /custom/ui
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -73,9 +62,6 @@ probe:
 	}
 	if cfg.Template.ExternalUI["linux"] != "/custom/ui" {
 		t.Fatalf("linux external-ui = %q, want /custom/ui", cfg.Template.ExternalUI["linux"])
-	}
-	if cfg.Probe.Services["latency"].URI != "https://connectivitycheck.gstatic.com/generate_204" {
-		t.Fatalf("probe service uri = %q", cfg.Probe.Services["latency"].URI)
 	}
 }
 
@@ -230,16 +216,12 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-	values := `
+values := `
 profiles:
   k3s:
     os: linux
   local:
     os: macos
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   bywave:
     type: http
@@ -248,7 +230,6 @@ proxy-providers:
     path: ./providers/bywave.yaml
 service-groups:
   auto:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -259,7 +240,6 @@ service-groups:
       local:
         providers: [bywave]
   stable:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -286,43 +266,6 @@ service-groups:
 	}
 	providerPath := filepath.Join(providersDir, "bywave.yaml")
 	if err := os.WriteFile(providerPath, []byte(providerYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"bywave": {Path: "./providers/bywave.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := catalog.Providers["bywave"].Digest
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"bywave": {
-				Provider:           "bywave",
-				SubscriptionDigest: digest,
-				Nodes: map[string]NodeProbeState{
-					"proxy-a": {
-						NodeName: "proxy-a",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -377,15 +320,10 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-	values := `
+values := `
 profiles:
   local:
     os: macos
-probe:
-  services:
-    github:
-      uri: ssh://github.com:22
-      url-test: https://github.com/
 proxy-providers:
   bywave:
     type: http
@@ -399,7 +337,6 @@ proxy-providers:
     path: ./providers/tag.yaml
 service-groups:
   github:
-    probe: github
     type: url-test
     url: https://github.com/
     interval: 300
@@ -447,75 +384,6 @@ service-groups:
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(providersDir, "tag.yaml"), []byte(tagYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"bywave": {Path: "./providers/bywave.yaml"},
-		"tag":    {Path: "./providers/tag.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	githubDigest := probeServiceDigest(ProbeServiceSpec{
-		URI:     "ssh://github.com:22",
-		URLTest: "https://github.com/",
-	})
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"bywave": {
-				Provider:           "bywave",
-				SubscriptionDigest: catalog.Providers["bywave"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"bywave-ssh": {
-						NodeName: "bywave-ssh",
-						Services: map[string]ServiceProbeState{
-							"github": {
-								OK:            true,
-								LatencyMillis: 120,
-								ProbeDigest:   githubDigest,
-								ProbedAt:      now.Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-			"tag": {
-				Provider:           "tag",
-				SubscriptionDigest: catalog.Providers["tag"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"🇯🇵 日本 01丨1x JP": {
-						NodeName: "🇯🇵 日本 01丨1x JP",
-						Services: map[string]ServiceProbeState{
-							"github": {
-								OK:            true,
-								LatencyMillis: 150,
-								ProbeDigest:   githubDigest,
-								ProbedAt:      now.Format(time.RFC3339),
-							},
-						},
-					},
-					"🇺🇸 美国-纽约 01丨1x US": {
-						NodeName: "🇺🇸 美国-纽约 01丨1x US",
-						Services: map[string]ServiceProbeState{
-							"github": {
-								OK:            true,
-								LatencyMillis: 180,
-								ProbeDigest:   githubDigest,
-								ProbedAt:      now.Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -590,7 +458,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-	values := `
+values := `
 profiles:
   local:
     os: macos
@@ -607,10 +475,6 @@ tun:
     strict-route: false
     mtu: 1500
     exclude-interface: []
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   bywave:
     type: http
@@ -619,7 +483,6 @@ proxy-providers:
     path: ./providers/bywave.yaml
 service-groups:
   auto:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -645,43 +508,6 @@ service-groups:
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(providersDir, "bywave.yaml"), []byte(providerYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"bywave": {Path: "./providers/bywave.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := catalog.Providers["bywave"].Digest
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"bywave": {
-				Provider:           "bywave",
-				SubscriptionDigest: digest,
-				Nodes: map[string]NodeProbeState{
-					"proxy-a": {
-						NodeName: "proxy-a",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -742,16 +568,12 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-	values := `
+values := `
 profiles:
   k3s:
     os: linux
   local:
     os: macos
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   jisu:
     type: http
@@ -760,7 +582,6 @@ proxy-providers:
     path: ./providers/jisu.yaml
 service-groups:
   auto:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -769,7 +590,6 @@ service-groups:
       k3s:
         providers: [jisu]
   personal-only:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -794,43 +614,6 @@ service-groups:
 	}
 	providerPath := filepath.Join(providersDir, "jisu.yaml")
 	if err := os.WriteFile(providerPath, []byte(providerYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"jisu": {Path: "./providers/jisu.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := catalog.Providers["jisu"].Digest
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"jisu": {
-				Provider:           "jisu",
-				SubscriptionDigest: digest,
-				Nodes: map[string]NodeProbeState{
-					"proxy-a personal-only": {
-						NodeName: "proxy-a personal-only",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -882,16 +665,12 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-	values := `
+values := `
 profiles:
   cluster:
     os: linux
   local:
     os: macos
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   bywave:
     type: http
@@ -905,7 +684,6 @@ proxy-providers:
     path: ./providers/tag.yaml
 service-groups:
   auto:
-    probe: latency
     type: url-test
     url: https://connectivitycheck.gstatic.com/generate_204
     interval: 300
@@ -941,59 +719,6 @@ service-groups:
     cipher: aes-128-gcm
     password: secret
 `), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"bywave": {Path: "./providers/bywave.yaml"},
-		"tag":    {Path: "./providers/tag.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"bywave": {
-				Provider:           "bywave",
-				SubscriptionDigest: catalog.Providers["bywave"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"cluster-proxy": {
-						NodeName: "cluster-proxy",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-			"tag": {
-				Provider:           "tag",
-				SubscriptionDigest: catalog.Providers["tag"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"personal-proxy": {
-						NodeName: "personal-proxy",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1066,16 +791,12 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-	values := `
+values := `
 profiles:
   k3s:
     os: linux
   local:
     os: macos
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   bywave:
     type: http
@@ -1089,7 +810,6 @@ proxy-providers:
     path: ./providers/jisu.yaml
 service-groups:
   k3s-image:
-    probe: latency
     type: url-test
     url: https://connectivitycheck.gstatic.com/generate_204
     interval: 300
@@ -1125,59 +845,6 @@ service-groups:
     cipher: aes-128-gcm
     password: secret
 `), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"bywave": {Path: "./providers/bywave.yaml"},
-		"jisu":   {Path: "./providers/jisu.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"bywave": {
-				Provider:           "bywave",
-				SubscriptionDigest: catalog.Providers["bywave"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"general-proxy": {
-						NodeName: "general-proxy",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-			"jisu": {
-				Provider:           "jisu",
-				SubscriptionDigest: catalog.Providers["jisu"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"tagged-proxy": {
-						NodeName: "tagged-proxy",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1240,16 +907,12 @@ rule-providers:
 rules:
 {{ toYAML .Rules | indent 2 }}
 `
-	values := `
+values := `
 profiles:
   k3s:
     os: linux
   local:
     os: macos
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   jisu:
     type: http
@@ -1258,7 +921,6 @@ proxy-providers:
     path: ./providers/jisu.yaml
 service-groups:
   k3s-image:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -1284,42 +946,6 @@ rules:
     cipher: aes-128-gcm
     password: secret
 `), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"jisu": {Path: "./providers/jisu.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"jisu": {
-				Provider:           "jisu",
-				SubscriptionDigest: catalog.Providers["jisu"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"tagged-proxy": {
-						NodeName: "tagged-proxy",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1380,14 +1006,10 @@ rule-providers: {}
 rules:
   - MATCH,DIRECT
 `
-	values := `
+values := `
 profiles:
   local:
     os: macos
-probe:
-  services:
-    latency:
-      uri: https://connectivitycheck.gstatic.com/generate_204
 proxy-providers:
   bywave:
     type: http
@@ -1396,7 +1018,6 @@ proxy-providers:
     path: ./providers/bywave.yaml
 service-groups:
   auto:
-    probe: latency
     type: url-test
     interval: 300
     tolerance: 50
@@ -1426,52 +1047,6 @@ service-groups:
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(providersDir, "bywave.yaml"), []byte(providerYAML), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := LoadProviderCatalog(repoRoot, map[string]ProxyProviderSpec{
-		"bywave": {Path: "./providers/bywave.yaml"},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	probeStatePath := filepath.Join(t.TempDir(), "probe-results.yaml")
-	t.Setenv("MIHOMO_PROBE_STATE_PATH", probeStatePath)
-	now := time.Now().UTC()
-	latencyDigest := probeServiceDigest(ProbeServiceSpec{URI: "https://connectivitycheck.gstatic.com/generate_204"})
-	state := &ProbeState{
-		Providers: map[string]ProviderProbeState{
-			"bywave": {
-				Provider:           "bywave",
-				SubscriptionDigest: catalog.Providers["bywave"].Digest,
-				Nodes: map[string]NodeProbeState{
-					"DIRECT": {
-						NodeName: "DIRECT",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-					"proxy-b": {
-						NodeName: "proxy-b",
-						Services: map[string]ServiceProbeState{
-							"latency": {
-								OK:          true,
-								ProbeDigest: latencyDigest,
-								ProbedAt:    now.Add(-time.Minute).Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-	populateFreshGroupProbeStateForTests(t, repoRoot, filepath.Join(configDir, "values.yaml"), state)
-	if err := SaveProbeState(probeStatePath, state); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2096,80 +1671,6 @@ func newTestService(repoRoot, configDir string) *Service {
 			TemplateConfig: filepath.Join(configDir, "mihomo.yaml.tmpl"),
 			ValuesConfig:   filepath.Join(configDir, "values.yaml"),
 		},
-	}
-}
-
-func populateFreshGroupProbeStateForTests(t *testing.T, repoRoot, valuesPath string, state *ProbeState) {
-	t.Helper()
-	if state == nil {
-		t.Fatal("probe state is nil")
-	}
-	cfg, err := LoadGenerationConfig(valuesPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	catalog, err := LoadProviderCatalog(repoRoot, cfg.ProxyProviders)
-	if err != nil {
-		t.Fatal(err)
-	}
-	serviceDigests, err := BuildProbeServiceDigests(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if state.Groups == nil {
-		state.Groups = map[string]GroupProbeState{}
-	}
-	for _, profileName := range probeProfileNames(cfg) {
-		targetGroups, err := resolveTargetGroups(cfg, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, groupName := range targetGroups {
-			groupSpec, ok := cfg.ServiceGroups[groupName]
-			if !ok {
-				continue
-			}
-			candidates, groupProfile, err := groupCandidatesForProfile(profileName, groupName, groupSpec, cfg, catalog, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(candidates) == 0 {
-				continue
-			}
-			probeDigest, ok := serviceDigests[groupSpec.Probe]
-			if !ok {
-				t.Fatalf("missing probe digest for %s", groupSpec.Probe)
-			}
-			groupState := GroupProbeState{
-				Group:           groupName,
-				Profile:         profileName,
-				Probe:           groupSpec.Probe,
-				Digest:          groupProbeDigest(profileName, groupName, groupSpec, groupProfile, probeDigest),
-				ProviderDigests: map[string]string{},
-				Nodes:           map[string]GroupNodeState{},
-			}
-			for _, candidate := range candidates {
-				groupState.ProviderDigests[candidate.Provider] = candidate.SubscriptionDigest
-				providerState, ok := state.Providers[candidate.Provider]
-				if !ok || providerState.SubscriptionDigest != candidate.SubscriptionDigest {
-					continue
-				}
-				nodeState, ok := providerState.Nodes[candidate.Proxy.Name]
-				if !ok || nodeState.Services == nil {
-					continue
-				}
-				serviceState, ok := nodeState.Services[groupSpec.Probe]
-				if !ok || !serviceState.OK || serviceState.ProbeDigest != probeDigest {
-					continue
-				}
-				groupState.Nodes[candidate.Proxy.Name] = GroupNodeState{
-					Provider: candidate.Provider,
-					NodeName: candidate.Proxy.Name,
-					Service:  serviceState,
-				}
-			}
-			state.Groups[groupStateKey(profileName, groupName)] = groupState
-		}
 	}
 }
 
