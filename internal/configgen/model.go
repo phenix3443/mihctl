@@ -2,6 +2,7 @@ package configgen
 
 import (
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -53,6 +54,40 @@ func isTruthy(value string) bool {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "1", "true", "yes", "on", "enabled":
 		return true
+	default:
+		return false
+	}
+}
+
+func intValue(value any) (int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int64:
+		return int(typed), true
+	case float64:
+		return int(typed), true
+	case string:
+		parsed, err := strconv.Atoi(strings.TrimSpace(typed))
+		return parsed, err == nil
+	default:
+		return 0, false
+	}
+}
+
+func stringValue(value any) string {
+	if text, ok := value.(string); ok {
+		return text
+	}
+	return ""
+}
+
+func boolValue(value any) bool {
+	switch typed := value.(type) {
+	case bool:
+		return typed
+	case string:
+		return typed == "true" || typed == "1"
 	default:
 		return false
 	}

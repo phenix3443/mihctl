@@ -7,18 +7,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type ProbeConfig struct {
-	Services map[string]ProbeServiceSpec `yaml:"services"`
-}
-
-type ProbeServiceSpec struct {
-	URI          string   `yaml:"uri"`
-	URLTest      string   `yaml:"url-test"`
-	HTTPMethod   string   `yaml:"http-method"`
-	Headers      []string `yaml:"headers"`
-	ExpectStatus []int    `yaml:"expect-status"`
-}
-
 type ProxyProviderSpec struct {
 	Type     string `yaml:"type"`
 	URL      string `yaml:"url"`
@@ -70,7 +58,6 @@ type ServiceGroupProfileSpec struct {
 
 type ServiceGroupSpec struct {
 	Profiles                 map[string]ServiceGroupProfileSpec `yaml:"profiles"`
-	Probe                    string                             `yaml:"probe"`
 	Type                     string                             `yaml:"type"`
 	URL                      string                             `yaml:"url"`
 	Interval                 int                                `yaml:"interval"`
@@ -93,7 +80,6 @@ type GenerationConfig struct {
 	DefaultProfile    string                                `yaml:"default-profile"`
 	Profiles          map[string]ProfileSpec                `yaml:"profiles"`
 	Template          TemplateSpec                          `yaml:"template"`
-	Probe             ProbeConfig                           `yaml:"probe"`
 	OfficialSupport   map[string]OfficialSupportConfigEntry `yaml:"official-support"`
 	ManualProxies     []ManualProxySpec                     `yaml:"manual-proxies"`
 	Tun               TunSpec                               `yaml:"tun"`
@@ -137,9 +123,6 @@ func LoadGenerationConfig(path string) (*GenerationConfig, error) {
 		}
 	}
 
-	if cfg.Probe.Services == nil {
-		cfg.Probe.Services = map[string]ProbeServiceSpec{}
-	}
 	if cfg.Profiles == nil {
 		cfg.Profiles = map[string]ProfileSpec{}
 	}
