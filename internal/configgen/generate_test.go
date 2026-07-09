@@ -216,7 +216,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-values := `
+	values := `
 profiles:
   k3s:
     os: linux
@@ -320,7 +320,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-values := `
+	values := `
 profiles:
   local:
     os: macos
@@ -458,7 +458,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-values := `
+	values := `
 profiles:
   local:
     os: macos
@@ -568,7 +568,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-values := `
+	values := `
 profiles:
   k3s:
     os: linux
@@ -665,7 +665,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-values := `
+	values := `
 profiles:
   cluster:
     os: linux
@@ -791,7 +791,7 @@ proxy-providers:
 rule-providers: {}
 rules: []
 `
-values := `
+	values := `
 profiles:
   k3s:
     os: linux
@@ -907,7 +907,7 @@ rule-providers:
 rules:
 {{ toYAML .Rules | indent 2 }}
 `
-values := `
+	values := `
 profiles:
   k3s:
     os: linux
@@ -1006,7 +1006,7 @@ rule-providers: {}
 rules:
   - MATCH,DIRECT
 `
-values := `
+	values := `
 profiles:
   local:
     os: macos
