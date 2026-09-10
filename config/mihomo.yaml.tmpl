@@ -25,7 +25,12 @@ external-ui: {{ .ExternalUI }}
 unified-delay: true
 tcp-concurrent: true
 keep-alive-interval: 30
-client-fingerprint: chrome
+# 【键名必须是 global-client-fingerprint】顶层的 client-fingerprint 是
+# **单个节点**的键，放在这里 mihomo 不当作全局默认——VLESS + Reality 节点
+# 会报 `REALITY is based on uTLS, please set a client-fingerprint`。
+# 实测对照（mihomo 1.19，2026-09-10）：写 client-fingerprint 报这个错，
+# 换成 global-client-fingerprint 之后错误消失、握手继续往下走。
+global-client-fingerprint: chrome
 
 profile:
   store-selected: true
