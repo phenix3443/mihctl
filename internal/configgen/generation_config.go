@@ -8,10 +8,21 @@ import (
 )
 
 type ProxyProviderSpec struct {
-	Type     string `yaml:"type"`
-	URL      string `yaml:"url"`
-	Interval int    `yaml:"interval"`
-	Path     string `yaml:"path"`
+	Type string `yaml:"type"`
+	URL  string `yaml:"url"`
+	// URLs 按 profile 覆盖 URL。订阅源在 tailnet 内时，k3s 里的 mihomo pod
+	// 解析不了 *.ts.net，只能走集群内地址；Mac 上的 profile 仍走 tailnet。
+	URLs     map[string]string `yaml:"urls"`
+	Interval int               `yaml:"interval"`
+	Path     string            `yaml:"path"`
+}
+
+// ResolveURL 返回该 profile 实际该用的订阅地址。
+func (s ProxyProviderSpec) ResolveURL(profile string) string {
+	if url, ok := s.URLs[profile]; ok && url != "" {
+		return url
+	}
+	return s.URL
 }
 
 type ManualProxySpec Config
@@ -161,6 +172,15 @@ func LoadGenerationConfig(path string) (*GenerationConfig, error) {
 	}
 	if cfg.Rules == nil {
 		cfg.Rules = []string{}
+	}
+	// urls 写错 profile 名不会报错，只会静默回退到默认 url——那正是这个功能
+	// 要解决的问题，所以这里拦住。
+	for name, spec := range cfg.ProxyProviders {
+		for profile := range spec.URLs {
+			if _, ok := cfg.Profiles[profile]; !ok {
+				return nil, fmt.Errorf("proxy-provider %q: urls 里的 %q 不是已定义的 profile", name, profile)
+			}
+		}
 	}
 	return &cfg, nil
 }
