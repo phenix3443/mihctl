@@ -212,7 +212,7 @@ func (s *Service) buildRenderData(profile, platform string, options GenerateOpti
 	}
 	proxies = filteredProxies
 
-	filteredProviders := orderedProxyProviders(cfg)
+	filteredProviders := orderedProxyProviders(cfg, profile)
 	ruleProviders := orderedRuleProviders(cfg)
 	groupConfigsAny := toAnyOrderedGroups(groupConfigs)
 	proxyGroupNames := proxyGroupNameSet(groupConfigsAny)
@@ -561,7 +561,7 @@ func containsAnyString(values []any, target string) bool {
 	return false
 }
 
-func orderedProxyProviders(cfg *GenerationConfig) OrderedMap {
+func orderedProxyProviders(cfg *GenerationConfig, profile string) OrderedMap {
 	values := map[string]any{}
 	keys := []string{}
 	for _, providerName := range cfg.ProviderOrder {
@@ -572,7 +572,7 @@ func orderedProxyProviders(cfg *GenerationConfig) OrderedMap {
 		keys = append(keys, providerName)
 		values[providerName] = map[string]any{
 			"type":     spec.Type,
-			"url":      spec.URL,
+			"url":      spec.ResolveURL(profile),
 			"interval": spec.Interval,
 			"path":     spec.Path,
 		}
