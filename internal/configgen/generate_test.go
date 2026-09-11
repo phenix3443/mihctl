@@ -1861,3 +1861,70 @@ func assertTopLevelProxyNamesIgnoreOrder(t *testing.T, config Config, want []str
 	sort.Strings(sortedWant)
 	assertStringSlice(t, got, sortedWant)
 }
+
+func TestProxyProviderURLOverridePerProfile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(`
+profiles:
+  k3s:
+    os: linux
+  local:
+    os: macos
+proxy-providers:
+  ppanel:
+    type: http
+    url: https://panel.example.ts.net/api/subscribe?token=t
+    urls:
+      k3s: http://panel.svc.cluster.local:8080/api/subscribe?token=t
+    interval: 3600
+    path: ./providers/ppanel.yaml
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadGenerationConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	spec := cfg.ProxyProviders["ppanel"]
+	for _, tc := range []struct{ profile, want string }{
+		{"k3s", "http://panel.svc.cluster.local:8080/api/subscribe?token=t"},
+		{"local", "https://panel.example.ts.net/api/subscribe?token=t"},
+		{"clash-verge", "https://panel.example.ts.net/api/subscribe?token=t"},
+	} {
+		if got := spec.ResolveURL(tc.profile); got != tc.want {
+			t.Errorf("profile %s: got %s, want %s", tc.profile, got, tc.want)
+		}
+	}
+
+	rendered := orderedProxyProviders(cfg, "k3s")
+	provider, _ := rendered.Values["ppanel"].(map[string]any)
+	if provider["url"] != "http://panel.svc.cluster.local:8080/api/subscribe?token=t" {
+		t.Errorf("rendered k3s url = %v", provider["url"])
+	}
+}
+
+func TestLoadGenerationConfigRejectsUnknownProfileInProviderURLs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(`
+profiles:
+  k3s:
+    os: linux
+proxy-providers:
+  ppanel:
+    type: http
+    url: https://panel.example.ts.net/sub
+    urls:
+      k3ss: http://typo.example/sub
+    path: ./providers/ppanel.yaml
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadGenerationConfig(path); err == nil {
+		t.Fatal("expected error for unknown profile in urls, got nil")
+	}
+}
