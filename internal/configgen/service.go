@@ -212,7 +212,7 @@ func (s *Service) buildRenderData(profile, platform string, options GenerateOpti
 	}
 	proxies = filteredProxies
 
-	filteredProviders := orderedProxyProviders(cfg, profile)
+	filteredProviders := orderedProxyProviders(cfg, profile, usedProxyProviderNames(toAnyOrderedGroups(groupConfigs)))
 	ruleProviders := orderedRuleProviders(cfg)
 	groupConfigsAny := toAnyOrderedGroups(groupConfigs)
 	proxyGroupNames := proxyGroupNameSet(groupConfigsAny)
@@ -561,12 +561,38 @@ func containsAnyString(values []any, target string) bool {
 	return false
 }
 
-func orderedProxyProviders(cfg *GenerationConfig, profile string) OrderedMap {
+// usedProxyProviderNames 收集各组 `use` 里真正引用到的 provider。
+// 没被任何组引用的 provider 不该写进这份 profile 的配置——写了 mihomo 就会
+// 按 interval 去拉它的订阅（tag 那份 1.4 MB），拉的东西一个组也用不上。
+func usedProxyProviderNames(groups []any) map[string]bool {
+	used := make(map[string]bool)
+	for _, item := range groups {
+		group, ok := asMap(item)
+		if !ok {
+			continue
+		}
+		providers, ok := group["use"].([]any)
+		if !ok {
+			continue
+		}
+		for _, item := range providers {
+			if name, ok := item.(string); ok {
+				used[name] = true
+			}
+		}
+	}
+	return used
+}
+
+func orderedProxyProviders(cfg *GenerationConfig, profile string, used map[string]bool) OrderedMap {
 	values := map[string]any{}
 	keys := []string{}
 	for _, providerName := range cfg.ProviderOrder {
 		spec, ok := cfg.ProxyProviders[providerName]
 		if !ok {
+			continue
+		}
+		if !used[providerName] {
 			continue
 		}
 		keys = append(keys, providerName)
