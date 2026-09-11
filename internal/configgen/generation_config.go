@@ -52,6 +52,10 @@ type TemplateSnifferSpec struct {
 
 type TemplateDNSSpec struct {
 	FakeIPFilter []string `yaml:"fake-ip-filter"`
+	// NameserverPolicy 追加到模板内置的域名分流之后。集群内域名必须走集群
+	// DNS：公网 nameserver 解析不了 *.cluster.local，而 mihomo 拉 provider
+	// 时用的正是自己这套 DNS。
+	NameserverPolicy map[string][]string `yaml:"nameserver-policy"`
 }
 
 type TemplateSpec struct {
@@ -151,6 +155,9 @@ func LoadGenerationConfig(path string) (*GenerationConfig, error) {
 	}
 	if cfg.Template.DNS.FakeIPFilter == nil {
 		cfg.Template.DNS.FakeIPFilter = []string{}
+	}
+	if cfg.Template.DNS.NameserverPolicy == nil {
+		cfg.Template.DNS.NameserverPolicy = map[string][]string{}
 	}
 	if cfg.ProxyProviders == nil {
 		cfg.ProxyProviders = map[string]ProxyProviderSpec{}

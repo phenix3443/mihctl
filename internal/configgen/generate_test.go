@@ -872,6 +872,19 @@ service-groups:
 	if got, _ := useProviders[0].(string); got != "jisu" {
 		t.Fatalf("group use = %q, want jisu", got)
 	}
+
+	// bywave 没被任何组的 `use` 引用，就不该出现在这份配置里——留着 mihomo
+	// 会照样按 interval 去拉它的订阅。
+	providersValue, ok := asMap(generated["proxy-providers"])
+	if !ok {
+		t.Fatalf("proxy-providers = %#v", generated["proxy-providers"])
+	}
+	if _, exists := providersValue["bywave"]; exists {
+		t.Errorf("proxy-providers contains unused bywave: %#v", providersValue)
+	}
+	if _, exists := providersValue["jisu"]; !exists {
+		t.Errorf("proxy-providers missing jisu: %#v", providersValue)
+	}
 }
 
 func TestGenerateFiltersRulesWithoutMatchingProfileGroup(t *testing.T) {
@@ -1899,7 +1912,7 @@ proxy-providers:
 		}
 	}
 
-	rendered := orderedProxyProviders(cfg, "k3s")
+	rendered := orderedProxyProviders(cfg, "k3s", map[string]bool{"ppanel": true})
 	provider, _ := rendered.Values["ppanel"].(map[string]any)
 	if provider["url"] != "http://panel.svc.cluster.local:8080/api/subscribe?token=t" {
 		t.Errorf("rendered k3s url = %v", provider["url"])
@@ -1926,5 +1939,45 @@ proxy-providers:
 
 	if _, err := LoadGenerationConfig(path); err == nil {
 		t.Fatal("expected error for unknown profile in urls, got nil")
+	}
+}
+
+func TestTemplateDNSNameserverPolicyFromValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(`
+template:
+  dns:
+    nameserver-policy:
+      "+.cluster.local":
+        - 10.43.0.10
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadGenerationConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := cfg.Template.DNS.NameserverPolicy["+.cluster.local"]
+	if len(got) != 1 || got[0] != "10.43.0.10" {
+		t.Fatalf("nameserver-policy = %v, want [10.43.0.10]", got)
+	}
+}
+
+func TestTemplateDNSNameserverPolicyDefaultsToEmptyMap(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte("template:\n  secret: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadGenerationConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Template.DNS.NameserverPolicy == nil {
+		t.Fatal("NameserverPolicy is nil; the template guards on it and a nil map would render nothing")
 	}
 }

@@ -77,6 +77,9 @@ dns:
     - https://dns.alidns.com/dns-query
 
   nameserver-policy:
+{{- if .Template.DNS.NameserverPolicy }}
+{{ toYAML .Template.DNS.NameserverPolicy | indent 4 }}
+{{- end }}
     "*.sankuaei.com":
       - https://anycast.bytecdns.com/913b04c3
       - https://anycast.soufunimgs.com/5428ab28
