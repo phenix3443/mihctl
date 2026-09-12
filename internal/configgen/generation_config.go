@@ -3,6 +3,7 @@ package configgen
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -12,9 +13,19 @@ type ProxyProviderSpec struct {
 	URL  string `yaml:"url"`
 	// URLs 按 profile 覆盖 URL。订阅源在 tailnet 内时，k3s 里的 mihomo pod
 	// 解析不了 *.ts.net，只能走集群内地址；Mac 上的 profile 仍走 tailnet。
-	URLs     map[string]string `yaml:"urls"`
-	Interval int               `yaml:"interval"`
-	Path     string            `yaml:"path"`
+	URLs map[string]string `yaml:"urls"`
+	// SnapshotProfiles 列出「由 mihctl 落快照、mihomo 只读本地文件」的 profile。
+	// 订阅源只有宿主机到得了时用它：tailnet 的 100.64/10 归 tailscale 的 utun，
+	// 而 mihomo 的出站 socket 绑在 auto-detect 出来的默认网卡上，拨不过去。
+	// 这些 profile 生成 `type: file`，config sync 顺带把快照拷进运行目录。
+	SnapshotProfiles []string `yaml:"snapshot-profiles"`
+	Interval         int      `yaml:"interval"`
+	Path             string   `yaml:"path"`
+}
+
+// IsSnapshot 报告该 profile 是否由 mihctl 落快照而不是让 mihomo 自己拉。
+func (s ProxyProviderSpec) IsSnapshot(profile string) bool {
+	return slices.Contains(s.SnapshotProfiles, profile)
 }
 
 // ResolveURL 返回该 profile 实际该用的订阅地址。
@@ -186,6 +197,11 @@ func LoadGenerationConfig(path string) (*GenerationConfig, error) {
 		for profile := range spec.URLs {
 			if _, ok := cfg.Profiles[profile]; !ok {
 				return nil, fmt.Errorf("proxy-provider %q: urls 里的 %q 不是已定义的 profile", name, profile)
+			}
+		}
+		for _, profile := range spec.SnapshotProfiles {
+			if _, ok := cfg.Profiles[profile]; !ok {
+				return nil, fmt.Errorf("proxy-provider %q: snapshot-profiles 里的 %q 不是已定义的 profile", name, profile)
 			}
 		}
 	}
