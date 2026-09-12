@@ -141,6 +141,9 @@ func (e *Env) syncConfigDarwin(options configgen.GenerateOptions, sourceProfile 
 		return err
 	}
 	logSuccess("Synced %s -> %s (Clash Verge profile %s)", vergeConfigPath, targetPath, profileUID)
+	if err := e.syncSnapshotProviders(sourceProfile.Name, e.ClashVergeDataDir()); err != nil {
+		return err
+	}
 	if err := runtime.Reload(info); err != nil {
 		logWarn("API reload failed; restart Clash Verge manually if needed")
 	}
@@ -188,6 +191,10 @@ func (e *Env) syncConfigMacStandalone(sourceProfile RuntimeProfile, startedFromS
 		logSuccess("Synced %s -> %s and providers/", standaloneConfigPath, targetConfigPath)
 	} else {
 		logSuccess("Synced %s -> %s", standaloneConfigPath, targetConfigPath)
+	}
+
+	if err := e.syncSnapshotProviders(sourceProfile.Name, e.ConfigDir); err != nil {
+		return err
 	}
 
 	info, err := runtime.CaptureReloadInfoFromYAML(targetConfigPath)
@@ -239,6 +246,10 @@ func (e *Env) syncConfigLinux(options configgen.GenerateOptions, sourceProfile R
 	}
 
 	if err := e.updateLinuxConfigInternal(sourceProfile); err != nil {
+		return err
+	}
+
+	if err := e.syncSnapshotProviders(sourceProfile.Name, e.ConfigDir); err != nil {
 		return err
 	}
 

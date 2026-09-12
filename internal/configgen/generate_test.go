@@ -1919,6 +1919,99 @@ proxy-providers:
 	}
 }
 
+func TestProxyProviderSnapshotProfileRendersFileType(t *testing.T) {
+	dir := t.TempDir()
+	// SnapshotProviderFiles 按 repoRoot/config/values.yaml 找配置，所以照这个布局放。
+	if err := os.MkdirAll(filepath.Join(dir, "config"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "config", "values.yaml")
+	if err := os.WriteFile(path, []byte(`
+profiles:
+  k3s:
+    os: linux
+  local:
+    os: macos
+provider-order: [ppanel]
+proxy-providers:
+  ppanel:
+    type: http
+    url: https://panel.example.ts.net/api/subscribe?token=t
+    urls:
+      k3s: http://panel.svc.cluster.local:8080/api/subscribe?token=t
+    snapshot-profiles: [local]
+    interval: 3600
+    path: ./providers/ppanel.yaml
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadGenerationConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// local 声明了 snapshot：只留 type/path，不能留 url——留了 mihomo 照样每小时
+	// 去拉那个它到不了的地址。
+	local, _ := orderedProxyProviders(cfg, "local", map[string]bool{"ppanel": true}).Values["ppanel"].(map[string]any)
+	if local["type"] != "file" {
+		t.Errorf("local type = %v, want file", local["type"])
+	}
+	if _, exists := local["url"]; exists {
+		t.Errorf("local should not carry url, got %v", local["url"])
+	}
+	if _, exists := local["interval"]; exists {
+		t.Errorf("local should not carry interval, got %v", local["interval"])
+	}
+	if local["path"] != "./providers/ppanel.yaml" {
+		t.Errorf("local path = %v", local["path"])
+	}
+
+	// 没声明的 profile 照旧 http + 自己的 url。
+	k3s, _ := orderedProxyProviders(cfg, "k3s", map[string]bool{"ppanel": true}).Values["ppanel"].(map[string]any)
+	if k3s["type"] != "http" {
+		t.Errorf("k3s type = %v, want http", k3s["type"])
+	}
+	if k3s["url"] != "http://panel.svc.cluster.local:8080/api/subscribe?token=t" {
+		t.Errorf("k3s url = %v", k3s["url"])
+	}
+
+	files, err := SnapshotProviderFiles(dir, "local")
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertStringSlice(t, files, []string{"ppanel.yaml"})
+	files, err = SnapshotProviderFiles(dir, "k3s")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(files) != 0 {
+		t.Errorf("k3s snapshot files = %v, want none", files)
+	}
+}
+
+func TestLoadGenerationConfigRejectsUnknownProfileInSnapshotProfiles(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(`
+profiles:
+  local:
+    os: macos
+proxy-providers:
+  ppanel:
+    type: http
+    url: https://panel.example.ts.net/sub
+    snapshot-profiles: [locall]
+    path: ./providers/ppanel.yaml
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := LoadGenerationConfig(path); err == nil {
+		t.Fatal("expected error for unknown profile in snapshot-profiles, got nil")
+	}
+}
+
 func TestLoadGenerationConfigRejectsUnknownProfileInProviderURLs(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "values.yaml")

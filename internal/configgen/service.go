@@ -596,6 +596,15 @@ func orderedProxyProviders(cfg *GenerationConfig, profile string, used map[strin
 			continue
 		}
 		keys = append(keys, providerName)
+		if spec.IsSnapshot(profile) {
+			// mihomo 只读文件，不留 url/interval——否则它照样每小时去拉一次
+			// 拉不到的地址，日志里刷 EOF。
+			values[providerName] = map[string]any{
+				"type": "file",
+				"path": spec.Path,
+			}
+			continue
+		}
 		values[providerName] = map[string]any{
 			"type":     spec.Type,
 			"url":      spec.ResolveURL(profile),
@@ -845,4 +854,22 @@ func selectTailscaleInterfaceFromIfconfig(serverIP, routeInterface, output strin
 		return "", fmt.Errorf("tailscale interface not found for %s via route interface %s", serverIP, routeInterface)
 	}
 	return "", fmt.Errorf("tailscale interface not found")
+}
+
+// SnapshotProviderFiles 返回该 profile 下需要 mihctl 拷进运行目录的
+// provider 快照文件名（basename）。
+func SnapshotProviderFiles(repoRoot, profile string) ([]string, error) {
+	cfg, err := LoadGenerationConfig(filepath.Join(repoRoot, "config", "values.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	files := []string{}
+	for _, name := range cfg.ProviderOrder {
+		spec, ok := cfg.ProxyProviders[name]
+		if !ok || !spec.IsSnapshot(profile) {
+			continue
+		}
+		files = append(files, filepath.Base(spec.Path))
+	}
+	return files, nil
 }

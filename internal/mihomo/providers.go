@@ -249,3 +249,34 @@ func (e *Env) fetchRemoteWithFallback(dest, rawURL, userAgent, origin string) er
 	}
 	return writeFilePrivileged(dest, content, 0o644)
 }
+
+// syncSnapshotProviders 把声明了 snapshot-profiles 的 provider 快照拷进运行目录。
+// 这些 provider 生成的是 `type: file`，mihomo 不会自己去拉，文件不到位就是 0 节点。
+// 必须在 reload 之前调用。
+// targetDir 要调用方给：detectLiveConfigDir 在 macOS 上优先返回 standalone
+// 目录，两个客户端都装了时同步到 Verge 会把快照拷错地方。
+func (e *Env) syncSnapshotProviders(profileName, liveDir string) error {
+	files, err := configgen.SnapshotProviderFiles(e.RepoRoot, profileName)
+	if err != nil {
+		return err
+	}
+	if len(files) == 0 {
+		return nil
+	}
+	targetDir := filepath.Join(liveDir, "providers")
+	if err := mkdirAllPrivileged(targetDir, 0o755); err != nil {
+		return err
+	}
+	for _, name := range files {
+		src := filepath.Join(e.ProvidersDir, name)
+		if !fileExists(src) {
+			return fmt.Errorf("snapshot provider missing: %s (run: mihctl providers update)", src)
+		}
+		dst := filepath.Join(targetDir, name)
+		if err := copyFilePrivileged(src, dst, 0o644); err != nil {
+			return err
+		}
+		logInfo("Snapshot provider synced: %s", name)
+	}
+	return nil
+}
