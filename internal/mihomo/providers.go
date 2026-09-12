@@ -253,7 +253,9 @@ func (e *Env) fetchRemoteWithFallback(dest, rawURL, userAgent, origin string) er
 // syncSnapshotProviders 把声明了 snapshot-profiles 的 provider 快照拷进运行目录。
 // 这些 provider 生成的是 `type: file`，mihomo 不会自己去拉，文件不到位就是 0 节点。
 // 必须在 reload 之前调用。
-func (e *Env) syncSnapshotProviders(profileName string) error {
+// targetDir 要调用方给：detectLiveConfigDir 在 macOS 上优先返回 standalone
+// 目录，两个客户端都装了时同步到 Verge 会把快照拷错地方。
+func (e *Env) syncSnapshotProviders(profileName, liveDir string) error {
 	files, err := configgen.SnapshotProviderFiles(e.RepoRoot, profileName)
 	if err != nil {
 		return err
@@ -261,11 +263,7 @@ func (e *Env) syncSnapshotProviders(profileName string) error {
 	if len(files) == 0 {
 		return nil
 	}
-	targetDir, err := e.detectLiveConfigDir()
-	if err != nil {
-		return err
-	}
-	targetDir = filepath.Join(targetDir, "providers")
+	targetDir := filepath.Join(liveDir, "providers")
 	if err := mkdirAllPrivileged(targetDir, 0o755); err != nil {
 		return err
 	}
