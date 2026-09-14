@@ -80,6 +80,10 @@ type ServiceGroupProfileSpec struct {
 	Providers       []string            `yaml:"providers"`
 	ProviderMatch   map[string][]string `yaml:"provider-match"`
 	ProviderExclude map[string][]string `yaml:"provider-exclude"`
+	// PreserveProviderOrder 为 true 时 use 按 Providers 的书写顺序排，而不是
+	// proxy-providers 的键顺序。select 组默认选 use 的第一个节点，要按组换首选
+	// 又不牵动其他组的默认值，只能靠这个。
+	PreserveProviderOrder bool `yaml:"preserve-provider-order"`
 }
 
 type ServiceGroupSpec struct {
