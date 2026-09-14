@@ -307,14 +307,23 @@ func filterReservedProxyGroupMembers(values []any) []any {
 
 func buildRuntimeGroupProvidersAndFilters(groupProfile ServiceGroupProfileSpec, groupSpec ServiceGroupSpec, cfg *GenerationConfig) ([]string, string, string, error) {
 	providers := make([]string, 0, len(cfg.ProviderOrder))
-	for _, providerName := range cfg.ProviderOrder {
-		if _, ok := cfg.ProxyProviders[providerName]; !ok {
-			continue
+	if groupProfile.PreserveProviderOrder {
+		for _, providerName := range groupProfile.Providers {
+			if _, ok := cfg.ProxyProviders[providerName]; !ok {
+				return nil, "", "", fmt.Errorf("provider %q is not defined in proxy-providers", providerName)
+			}
+			providers = append(providers, providerName)
 		}
-		if len(groupProfile.Providers) > 0 && !containsString(groupProfile.Providers, providerName) {
-			continue
+	} else {
+		for _, providerName := range cfg.ProviderOrder {
+			if _, ok := cfg.ProxyProviders[providerName]; !ok {
+				continue
+			}
+			if len(groupProfile.Providers) > 0 && !containsString(groupProfile.Providers, providerName) {
+				continue
+			}
+			providers = append(providers, providerName)
 		}
-		providers = append(providers, providerName)
 	}
 	filterValues := append([]string(nil), groupSpec.Match...)
 	excludeValues := append([]string(nil), groupSpec.Exclude...)
