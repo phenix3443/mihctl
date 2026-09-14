@@ -227,3 +227,74 @@ official-support:
 		t.Fatalf("bitget prohibited = %q", got)
 	}
 }
+
+// 拉取失败时保留旧快照是对的，但不能当成功：订阅链接 401/404 了几周，
+// 命令一直打印 finished、退出码 0，没人发现。
+func TestUpdateProvidersRemoteFailsWhenAnyFetchFailsButKeepsExistingSnapshot(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/ok.yaml":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("proxies: [fresh]\n"))
+		case "/dead.yaml":
+			w.WriteHeader(http.StatusUnauthorized)
+		}
+	}))
+	defer server.Close()
+
+	repoRoot := t.TempDir()
+	configDir := filepath.Join(repoRoot, "config")
+	providersDir := filepath.Join(repoRoot, "providers")
+	for _, dir := range []string{configDir, providersDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "values.yaml"), []byte(`
+proxy-providers:
+  ok:
+    type: http
+    url: `+server.URL+`/ok.yaml
+    interval: 60
+    path: ./providers/ok.yaml
+  dead:
+    type: http
+    url: `+server.URL+`/dead.yaml
+    interval: 60
+    path: ./providers/dead.yaml
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stale := "proxies: [stale]\n"
+	if err := os.WriteFile(filepath.Join(providersDir, "dead.yaml"), []byte(stale), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	env := &Env{
+		RepoRoot:            repoRoot,
+		ProvidersDir:        providersDir,
+		FetchConnectTimeout: time.Second,
+		FetchMaxTime:        time.Second,
+	}
+	err := env.UpdateProvidersRemote()
+	if err == nil {
+		t.Fatal("expected error when a provider fetch fails, got nil")
+	}
+	for _, want := range []string{"dead", "http status 401"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q should mention %q", err.Error(), want)
+		}
+	}
+	if strings.Contains(err.Error(), "ok") && !strings.Contains(err.Error(), "dead") {
+		t.Errorf("error should name the failed provider, got %q", err.Error())
+	}
+
+	got, readErr := os.ReadFile(filepath.Join(providersDir, "ok.yaml"))
+	if readErr != nil || string(got) != "proxies: [fresh]\n" {
+		t.Errorf("successful provider should still be updated, got %q (%v)", string(got), readErr)
+	}
+	got, readErr = os.ReadFile(filepath.Join(providersDir, "dead.yaml"))
+	if readErr != nil || string(got) != stale {
+		t.Errorf("failed provider should keep existing snapshot, got %q (%v)", string(got), readErr)
+	}
+}

@@ -182,14 +182,19 @@ func (e *Env) UpdateProvidersRemote() error {
 		resultsByName[result.name] = result
 	}
 
+	// 失败的 provider 保留旧快照、不打断其他 provider，但整体必须报错：
+	// 只打 warning 的话，订阅链接失效几周都没人发现。
+	var failures []string
 	for _, job := range jobs {
 		result := resultsByName[job.name]
 		if result.err != nil {
 			if fileExists(result.dest) {
-				logWarn("Fetch failed; kept existing %s", filepath.Base(result.dest))
-				continue
+				logWarn("Fetch failed for %s (%v); kept existing %s", result.name, result.err, filepath.Base(result.dest))
+			} else {
+				logWarn("Fetch failed for %s (%v); no existing snapshot", result.name, result.err)
 			}
-			return fmt.Errorf("fetch provider %s: %w", result.name, result.err)
+			failures = append(failures, fmt.Sprintf("%s: %v", result.name, result.err))
+			continue
 		}
 		content := result.content
 		previous, readErr := os.ReadFile(result.dest)
@@ -201,6 +206,9 @@ func (e *Env) UpdateProvidersRemote() error {
 			return err
 		}
 		logSuccess("Updated %s", filepath.Base(result.dest))
+	}
+	if len(failures) > 0 {
+		return fmt.Errorf("provider fetch failed for %d of %d providers: %s", len(failures), len(jobs), strings.Join(failures, "; "))
 	}
 	logSuccess("Repository provider update finished")
 	return nil
