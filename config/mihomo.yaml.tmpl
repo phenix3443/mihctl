@@ -25,11 +25,12 @@ external-ui: {{ .ExternalUI }}
 unified-delay: true
 tcp-concurrent: true
 keep-alive-interval: 30
-# 【键名必须是 global-client-fingerprint】顶层的 client-fingerprint 是
-# **单个节点**的键，放在这里 mihomo 不当作全局默认——VLESS + Reality 节点
-# 会报 `REALITY is based on uTLS, please set a client-fingerprint`。
-# 实测对照（mihomo 1.19，2026-09-10）：写 client-fingerprint 报这个错，
-# 换成 global-client-fingerprint 之后错误消失、握手继续往下走。
+# 【只对 k3s 的 mihomo 1.19.19 有效，不能靠它】1.19.30 已删除这个全局键，重载时报
+# `The global-client-fingerprint configuration is removed, please set
+# client-fingerprint directly on the proxy instead`，节点没有自己的 client-fingerprint
+# 的 Reality 节点会在本地报 `REALITY is based on uTLS, please set a client-fingerprint`，
+# 请求根本不发出（实测 2026-09-14）。指纹必须由订阅在节点上带；这里留着只为兜住
+# 1.19.19 上还没带指纹的节点，k3s 升到 1.19.30 之后删掉。
 global-client-fingerprint: chrome
 
 profile:
