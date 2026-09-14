@@ -19,8 +19,12 @@ type ProxyProviderSpec struct {
 	// 而 mihomo 的出站 socket 绑在 auto-detect 出来的默认网卡上，拨不过去。
 	// 这些 profile 生成 `type: file`，config sync 顺带把快照拷进运行目录。
 	SnapshotProfiles []string `yaml:"snapshot-profiles"`
-	Interval         int      `yaml:"interval"`
-	Path             string   `yaml:"path"`
+	// Override 原样透传给 mihomo 的 proxy-provider override。订阅不写 udp: true
+	// 时节点默认不支持 UDP，走它的 UDP 会跳过规则静默直连——服务端实测支持 UDP
+	// 的订阅要在这里补 udp: true。
+	Override map[string]any `yaml:"override"`
+	Interval int            `yaml:"interval"`
+	Path     string         `yaml:"path"`
 }
 
 // IsSnapshot 报告该 profile 是否由 mihctl 落快照而不是让 mihomo 自己拉。

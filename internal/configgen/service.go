@@ -605,21 +605,26 @@ func orderedProxyProviders(cfg *GenerationConfig, profile string, used map[strin
 			continue
 		}
 		keys = append(keys, providerName)
+		var provider map[string]any
 		if spec.IsSnapshot(profile) {
 			// mihomo 只读文件，不留 url/interval——否则它照样每小时去拉一次
 			// 拉不到的地址，日志里刷 EOF。
-			values[providerName] = map[string]any{
+			provider = map[string]any{
 				"type": "file",
 				"path": spec.Path,
 			}
-			continue
+		} else {
+			provider = map[string]any{
+				"type":     spec.Type,
+				"url":      spec.ResolveURL(profile),
+				"interval": spec.Interval,
+				"path":     spec.Path,
+			}
 		}
-		values[providerName] = map[string]any{
-			"type":     spec.Type,
-			"url":      spec.ResolveURL(profile),
-			"interval": spec.Interval,
-			"path":     spec.Path,
+		if len(spec.Override) > 0 {
+			provider["override"] = spec.Override
 		}
+		values[providerName] = provider
 	}
 	return OrderedMap{Keys: keys, Values: values}
 }
