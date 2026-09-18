@@ -138,7 +138,7 @@ func (s *Service) buildRenderData(profile, platform string, options GenerateOpti
 		if !ok {
 			continue
 		}
-		groupType := nonEmpty(groupSpec.Type, "url-test")
+		groupType := nonEmpty(groupProfile.Type, groupSpec.Type, "url-test")
 		groupConfigValues := map[string]any{
 			"name":      groupName,
 			"type":      groupType,
@@ -168,7 +168,8 @@ func (s *Service) buildRenderData(profile, platform string, options GenerateOpti
 			groupConfigValues["exclude-filter"] = excludeFilter
 			groupConfigKeys = append(groupConfigKeys, "exclude-filter")
 		}
-		if groupType == "url-test" {
+		// fallback 和 url-test 一样靠 url 做健康检查，没有它就判断不了节点死活。
+		if groupType == "url-test" || groupType == "fallback" {
 			groupURL := resolveServiceGroupURL(groupSpec)
 			groupConfigValues["url"] = groupURL
 			groupConfigKeys = append(groupConfigKeys, "url")

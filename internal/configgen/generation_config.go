@@ -88,6 +88,8 @@ type ServiceGroupProfileSpec struct {
 	// proxy-providers 的键顺序。select 组默认选 use 的第一个节点，要按组换首选
 	// 又不牵动其他组的默认值，只能靠这个。
 	PreserveProviderOrder bool `yaml:"preserve-provider-order"`
+	// Type 覆盖组级 type，只作用于这个 profile。
+	Type string `yaml:"type"`
 }
 
 type ServiceGroupSpec struct {
