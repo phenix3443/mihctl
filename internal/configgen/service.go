@@ -621,9 +621,6 @@ func orderedProxyProviders(cfg *GenerationConfig, profile string, used map[strin
 				"interval": spec.Interval,
 				"path":     spec.Path,
 			}
-			if spec.Proxy != "" {
-				provider["proxy"] = spec.Proxy
-			}
 		}
 		if len(spec.Override) > 0 {
 			provider["override"] = spec.Override
