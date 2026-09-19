@@ -23,8 +23,12 @@ type ProxyProviderSpec struct {
 	// 时节点默认不支持 UDP，走它的 UDP 会跳过规则静默直连——服务端实测支持 UDP
 	// 的订阅要在这里补 udp: true。
 	Override map[string]any `yaml:"override"`
-	Interval int            `yaml:"interval"`
-	Path     string         `yaml:"path"`
+	// Proxy 指定拉订阅走哪个出口，原样透传给 mihomo。不写时拉取按规则走，订阅域名
+	// 落到兜底组，就会经这些订阅自己的节点去拉；选中的节点一死，拉不到新节点、
+	// 也就换不掉死节点。直连拉得到的订阅写 DIRECT。
+	Proxy    string `yaml:"proxy"`
+	Interval int    `yaml:"interval"`
+	Path     string `yaml:"path"`
 }
 
 // IsSnapshot 报告该 profile 是否由 mihctl 落快照而不是让 mihomo 自己拉。

@@ -1919,6 +1919,45 @@ proxy-providers:
 	}
 }
 
+func TestProxyProviderFetchProxyRendered(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "values.yaml")
+	if err := os.WriteFile(path, []byte(`
+profiles:
+  k3s:
+    os: linux
+proxy-providers:
+  jms:
+    type: http
+    url: https://sub.example.com/a
+    proxy: DIRECT
+    interval: 3600
+    path: ./providers/jms.yaml
+  plain:
+    type: http
+    url: https://sub.example.com/b
+    interval: 3600
+    path: ./providers/plain.yaml
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := LoadGenerationConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rendered := orderedProxyProviders(cfg, "k3s", map[string]bool{"jms": true, "plain": true})
+	jms, _ := rendered.Values["jms"].(map[string]any)
+	if jms["proxy"] != "DIRECT" {
+		t.Errorf("jms proxy = %v, want DIRECT", jms["proxy"])
+	}
+	plain, _ := rendered.Values["plain"].(map[string]any)
+	if _, exists := plain["proxy"]; exists {
+		t.Errorf("plain should not carry proxy, got %v", plain["proxy"])
+	}
+}
+
 func TestProxyProviderSnapshotProfileRendersFileType(t *testing.T) {
 	dir := t.TempDir()
 	// SnapshotProviderFiles 按 repoRoot/config/values.yaml 找配置，所以照这个布局放。
